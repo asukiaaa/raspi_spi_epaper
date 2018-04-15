@@ -34,8 +34,24 @@ pip install pillow
 ```
 
 # Usage
+
+## Sample
+
 ```
-python main.py
+python main_original.py
+```
+
+## Show Japanese
+
+```
+python main_show_jp.py
+```
+
+## Show event info
+
+```
+pip instal python-connpass python-dateutil
+python main_show_halake_events.py
 ```
 
 # References
