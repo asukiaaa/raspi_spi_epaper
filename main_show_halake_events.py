@@ -7,6 +7,7 @@ from PIL import Image, ImageDraw, ImageFont
 import pytz
 from datetime import datetime
 from dateutil import parser
+from requests.exceptions import ConnectionError
 
 EPD_WIDTH = 640
 EPD_HEIGHT = 384
@@ -16,14 +17,18 @@ JP_WEEK_DAYS = [u'日', u'月', u'火', u'水', u'木', u'金', u'土']
 
 def get_events(group_id):
     utc = pytz.UTC
-    global events
-    events = []
-    date_now = utc.localize(datetime.utcnow())
-    for event in Connpass().search(series_id=[group_id])['events']:
-        started_at = parser.parse(event['started_at'])
-        if started_at > date_now:
-            events.append(event)
-    return sorted(events, key=lambda event: event['started_at'])
+    try:
+        events = []
+        date_now = utc.localize(datetime.utcnow())
+        for event in Connpass().search(series_id=[group_id])['events']:
+            started_at = parser.parse(event['started_at'])
+            if started_at > date_now:
+                events.append(event)
+        return sorted(events, key=lambda event: event['started_at'])
+    except ConnectionError as e:
+        print("Cannot get events")
+        print(e)
+        return None
 
 def get_datetime_str(target_datetime):
     date_str = target_datetime.strftime('%m/%d')
@@ -65,6 +70,8 @@ def main():
         epd.init()
 
     events = get_events(CONNPASS_GROUP_ID)
+    if events == None:
+        return
 
     image_red = Image.new('1', (EPD_WIDTH, EPD_HEIGHT), 255) # 255: clear the frame
     draw_red = ImageDraw.Draw(image_red)
