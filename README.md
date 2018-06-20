@@ -29,8 +29,7 @@ On raspiconfig, Select Interfaces -> SPI -> OK.
 
 Install dependencies.
 ```
-sudo apt install pip
-pip install pillow
+sudo apt install python-spidev python-pil python-tz
 ```
 
 # Usage
@@ -44,14 +43,40 @@ python main_original.py
 ## Show Japanese
 
 ```
+sudo apt install fonts-noto-cjk
 python main_show_jp.py
 ```
 
 ## Show event info
 
 ```
-pip instal python-connpass python-dateutil
+sudo apt install python-pip
+sudo pip instal python-connpass python-dateutil
 python main_show_halake_events.py
+```
+
+# Autorun
+
+## Every hours
+
+Open crontab.
+
+```
+crontab -e
+```
+
+Add the following line.
+
+```
+0 * * * * python [path for this dir/main_show_halake_events.py
+```
+
+## Run at booting with using rc.loca
+
+Add the following line before `exit 1` on `/etc/rc.local`.
+
+```
+/bin/python [path for this dir]/main_show_halake_events.py
 ```
 
 # References
