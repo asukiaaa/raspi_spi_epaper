@@ -15,6 +15,7 @@ import json
 import pytz
 from datetime import datetime
 from dateutil import parser
+from json.decoder import JSONDecodeError
 from requests.exceptions import ConnectionError
 
 EPD_WIDTH = 640
@@ -46,7 +47,11 @@ def get_connpass_events(group_id):
                 # print(json.dumps(event, ensure_ascii=False, indent=2))
         return events
     except ConnectionError as e:
-        print("Cannot get events")
+        print("Cannot get events because of ConnectionError.")
+        print(e)
+        return None
+    except JSONDecodeError as e:
+        print("Cannot get events because of JSONDecodeError. (Maybe connpass is in maintenance)")
         print(e)
         return None
 
