@@ -1,9 +1,17 @@
 # encoding: utf-8
-debug_mode=False
-if (not debug_mode):
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--debug", action='store_true', default=False, help="call to run as debug mode")
+parser.add_argument("--dataFilePath", default=None, help="set path to load info of events from file")
+
+args = parser.parse_args()
+
+if (not args.debug):
     import epd7in5b
 from connpass import Connpass
 from PIL import Image, ImageDraw, ImageFont
+import json
 import pytz
 from datetime import datetime
 from dateutil import parser
@@ -11,20 +19,32 @@ from requests.exceptions import ConnectionError
 
 EPD_WIDTH = 640
 EPD_HEIGHT = 384
-CONNPASS_GROUP_ID = 1382
+CONNPASS_GROUP_ID = 1382 # HaLake
 #CONNPASS_GROUP_ID = 1
 JP_WEEK_DAYS = [u'日', u'月', u'火', u'水', u'木', u'金', u'土']
 
-def get_events(group_id):
+def load_events(filePath):
+    f = open(filePath, 'r')
+    json_dict = json.load(f)
+    # print(json_dict)
+    # print(json_dict['events'])
+    return json_dict
+
+def sort_events(events):
+    return sorted(events, key=lambda event: event['started_at'])
+
+def get_connpass_events(group_id):
     utc = pytz.UTC
+    events = []
+    date_now = utc.localize(datetime.utcnow())
+    # date_now = parser.parse('2018-06-03T14:00:00+09:00')
     try:
-        events = []
-        date_now = utc.localize(datetime.utcnow())
         for event in Connpass().search(series_id=[group_id])['events']:
             started_at = parser.parse(event['started_at'])
             if started_at > date_now:
                 events.append(event)
-        return sorted(events, key=lambda event: event['started_at'])
+                # print(json.dumps(event, ensure_ascii=False, indent=2))
+        return events
     except ConnectionError as e:
         print("Cannot get events")
         print(e)
@@ -45,7 +65,9 @@ def draw_events(draw_black, font, events, line_x, line_y, first_line_step, secon
         line_y += first_line_step
         started_at = parser.parse(event['started_at'])
         datetime_str = get_datetime_str(started_at)
-        accepted_str = str(event['accepted']) + u'人参加予定'
+        accepted_str = ''
+        if 'accepted' in event and event['accepted'] != 0:
+            accepted_str = str(event['accepted']) + u'人参加予定'
         draw_black.text((line_x, line_y), datetime_str + u'  ' + accepted_str, font = font, fill = 0)
         line_y += second_line_step
     if (len(events) == 0):
@@ -65,13 +87,21 @@ def draw_last_line(draw_black, font, event_count, line_x, time_line_x, line_y, m
     draw_black.text((x, line_y), get_datetime_str(jp_now) + u" 表示", font = font, fill = 0)
 
 def main():
-    if (not debug_mode):
+    if (not args.debug):
         epd = epd7in5b.EPD()
         epd.init()
 
-    events = get_events(CONNPASS_GROUP_ID)
-    if events == None:
-        return
+    events = []
+    if args.dataFilePath != None:
+        fileData = load_events(args.dataFilePath)
+        if 'events' in fileData and fileData['events'] != None:
+            events += fileData['events']
+
+    connpass_events = get_connpass_events(CONNPASS_GROUP_ID)
+    if connpass_events != None:
+        events += connpass_events
+
+    events = sort_events(events)
 
     image_red = Image.new('1', (EPD_WIDTH, EPD_HEIGHT), 255) # 255: clear the frame
     draw_red = ImageDraw.Draw(image_red)
@@ -87,7 +117,7 @@ def main():
     max_event_count = 2
     line_y = draw_events(draw_black, font, events, line_x, line_y, first_line_step, second_line_step, max_event_count)
     draw_last_line(draw_black, font, len(events), line_x, time_line_x, line_y, max_event_count)
-    if (not debug_mode):
+    if (not args.debug):
         epd.display_frame(epd.get_frame_buffer(image_black),epd.get_frame_buffer(image_red))
     else:
         image_black.save('debug.jpg')
