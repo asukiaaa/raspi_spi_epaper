@@ -13,9 +13,14 @@ from connpass import Connpass
 from PIL import Image, ImageDraw, ImageFont
 import json
 import pytz
+import sys
 from datetime import datetime
 from dateutil import parser
-from json.decoder import JSONDecodeError
+if sys.version_info[0] < 3.0:
+    from simplejson import JSONDecodeError
+else:
+    from json.decoder import JSONDecodeError
+
 from requests.exceptions import ConnectionError
 
 EPD_WIDTH = 640

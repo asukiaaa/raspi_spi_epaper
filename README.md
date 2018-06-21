@@ -51,7 +51,7 @@ python main_show_jp.py
 
 ```
 sudo apt install python-pip
-sudo pip instal python-connpass python-dateutil
+sudo pip install python-connpass python-dateutil simplejson
 python main_show_halake_events.py
 ```
 
