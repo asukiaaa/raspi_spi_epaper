@@ -24,7 +24,7 @@ CONNPASS_GROUP_ID = 1382 # HaLake
 #CONNPASS_GROUP_ID = 1
 JP_WEEK_DAYS = [u'日', u'月', u'火', u'水', u'木', u'金', u'土']
 
-def load_events(filePath):
+def load_json(filePath):
     f = open(filePath, 'r')
     json_dict = json.load(f)
     # print(json_dict)
@@ -34,26 +34,29 @@ def load_events(filePath):
 def sort_events(events):
     return sorted(events, key=lambda event: event['started_at'])
 
-def get_connpass_events(group_id):
+def remove_past_events(events):
     utc = pytz.UTC
-    events = []
     date_now = utc.localize(datetime.utcnow())
-    # date_now = parser.parse('2018-06-03T14:00:00+09:00')
+    # date_now = parser.parse('2018-03-24T15:00:00+09:00')
+    future_events = []
+    for event in events:
+        # print(json.dumps(event, ensure_ascii=False, indent=2))
+        if 'started_at' in event and parser.parse(event['started_at']) > date_now:
+            future_events.append(event)
+        elif 'ended_at' in event and parser.parse(event['ended_at']) > date_now:
+            future_events.append(event)
+    return future_events
+
+def get_connpass_events(group_id):
+    events = []
     try:
-        for event in Connpass().search(series_id=[group_id])['events']:
-            started_at = parser.parse(event['started_at'])
-            if started_at > date_now:
-                events.append(event)
-                # print(json.dumps(event, ensure_ascii=False, indent=2))
-        return events
+        return remove_past_events(Connpass().search(series_id=[group_id])['events'])
     except ConnectionError as e:
         print("Cannot get events because of ConnectionError.")
         print(e)
-        return None
     except JSONDecodeError as e:
         print("Cannot get events because of JSONDecodeError. (Maybe connpass is in maintenance)")
         print(e)
-        return None
 
 def get_datetime_str(target_datetime):
     date_str = target_datetime.strftime('%m/%d')
@@ -98,9 +101,9 @@ def main():
 
     events = []
     if args.dataFilePath != None:
-        fileData = load_events(args.dataFilePath)
+        fileData = load_json(args.dataFilePath)
         if 'events' in fileData and fileData['events'] != None:
-            events += fileData['events']
+            events += remove_past_events(fileData['events'])
 
     connpass_events = get_connpass_events(CONNPASS_GROUP_ID)
     if connpass_events != None:
